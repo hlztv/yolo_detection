@@ -13,13 +13,8 @@ from PIL import Image
 
 import matplotlib.pyplot as plt
 
-# YOLO Detection = YOLO()
 
-# Tracker = Track()
-
-
-def TrackerInit(t_type):
-    tracker_type = t_type
+def TrackerInit(tracker_type):
 
     if tracker_type == 'BOOSTING':
         tracker = cv2.TrackerBoosting_create()
@@ -40,6 +35,40 @@ def TrackerInit(t_type):
 
     return tracker
 
+def YOLO(frame,tracker_type):
+    trackers=[]
+    bboxes=[]
+
+    input_img=Image.fromarray(frame)
+
+    trans=transforms.Compose([transforms.Resize((416,416)),
+                              transforms.ToTensor()])
+
+    input_img=trans(input_img).unsqueeze(0).to(device)
+
+    # Detect Object
+    detections = model(input_img)
+    detections = non_max_suppression(detections, opt.conf_thres, opt.nms_thres)[0]
+    
+    if detections is not None:
+        detections=rescale_boxes(detections,opt.img_size,frame.shape[:2]).long()
+
+        for det in detections:
+            if det[-1] != 0:
+                continue
+
+            p1=tuple(det[:2])
+            p2=tuple(det[2:4])
+            tracker=TrackerInit(tracker_type)
+
+            bbox=p1+p2
+            ok=tracker.init(frame,bbox)
+
+            trackers.append(tracker)
+            bboxes.append(bbox)
+
+    return trackers,bboxes
+
 if __name__=='__main__':
     parser=argparse.ArgumentParser()
 
@@ -52,6 +81,8 @@ if __name__=='__main__':
     opt=parser.parse_args()
 
     device='cuda' if torch.cuda.is_available() else 'cpu'
+
+    tracker_type='CSRT'
 
     # YOLO model initialize
     print('YOLO model initializing...')
@@ -68,7 +99,7 @@ if __name__=='__main__':
 
     classes=load_classes(opt.class_path)
 
-    video=cv2.VideoCapture('Chaplin.mp4')
+    video=cv2.VideoCapture('fight.mp4')
 
     if not video.isOpened():
         print("Could not open video")
@@ -80,55 +111,14 @@ if __name__=='__main__':
         print('Cannot read video file')
         sys.exit()
 
-    input_img=Image.fromarray(frame)
+    count=0
 
-    trans=transforms.Compose([transforms.Resize((416,416)),
-                              transforms.ToTensor()])
-
-    input_img=trans(input_img).unsqueeze(0).to(device)
-
-    # Detect Object
-    detections = model(input_img)
-    detections = non_max_suppression(detections, opt.conf_thres, opt.nms_thres)
-    
-    print(detections[0][0])
-    detections=rescale_boxes(detections[0],opt.img_size,frame.shape[:2]).long()
-    print(detections[0])
-
-    trackers=[]
-    bboxes=[]
-
-    tracker_type='CSRT'
-
-    for det in detections:
-        if det[-1] != 0:
-            continue
-
-        p1=tuple(det[:2])
-        p2=tuple(det[2:4])
-        class_name=classes[det[-1]]
-
-        tracker=TrackerInit(tracker_type)
-
-        bbox=p1+p2
-        ok=tracker.init(frame,bbox)
-
-        trackers.append(tracker)
-        bboxes.append(bbox)
-
-        print(p1,p2)
-        print(frame.shape)
-
-        cv2.rectangle(frame,p1,p2,(0,255,0))
-
-        cv2.imshow('frame',frame)
-        cv2.waitKey(0)
-
-        break
-
-    sys.exit()
+    print(frame.shape)
 
     while True:
+        if count%30==0:
+            trackers,bboxes = YOLO(frame,tracker_type)
+
         # Read a new frame
         ok, frame = video.read()
         if not ok:
@@ -140,12 +130,11 @@ if __name__=='__main__':
         # Update tracker
         for i,t in enumerate(trackers):
             ok, bboxes[i] = t.update(frame)
+            break
  
         # Calculate Frames per second (FPS)
         fps = cv2.getTickFrequency() / (cv2.getTickCount() - timer);
 
-        print(bboxes)
- 
         # Draw bounding box
         if ok:
             # Tracking success
@@ -153,6 +142,7 @@ if __name__=='__main__':
                 p1 = (int(b[0]), int(b[1]))
                 p2 = (int(b[2]), int(b[3]))
                 cv2.rectangle(frame, p1, p2, (255,0,0), 2, 1)
+                break
         else :
             # Tracking failure
             cv2.putText(frame, "Tracking failure detected", (100,80), cv2.FONT_HERSHEY_SIMPLEX, 0.75,(0,0,255),2)
@@ -165,9 +155,9 @@ if __name__=='__main__':
 
         # Display result
         cv2.imshow("Tracking", frame)
-        cv2.waitKey(0)
-        break
- 
+
         # Exit if ESC pressed
         k = cv2.waitKey(1) & 0xff
         if k == 27 : break
+
+        count+=1
