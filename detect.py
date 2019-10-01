@@ -15,6 +15,7 @@ from PIL import Image
 import torch
 from torch.utils.data import DataLoader
 from torchvision import datasets
+from torchvision import transforms
 from torch.autograd import Variable
 
 import matplotlib.pyplot as plt
@@ -106,8 +107,8 @@ if __name__ == "__main__":
         # Draw bounding boxes and labels of detections
         if detections is not None:
             # Rescale boxes to original image
+            print(detections)
             detections = rescale_boxes(detections, opt.img_size, img.shape[:2])
-            sys.exit()
             unique_labels = detections[:, -1].cpu().unique()
             n_cls_preds = len(unique_labels)
             bbox_colors = random.sample(colors, n_cls_preds)
@@ -121,6 +122,8 @@ if __name__ == "__main__":
                 color = bbox_colors[int(np.where(unique_labels == int(cls_pred))[0])]
                 # Create a Rectangle patch
                 bbox = patches.Rectangle((x1, y1), box_w, box_h, linewidth=2, edgecolor=color, facecolor="none")
+                print(x1,y1,x2,y2,classes[int(cls_pred)])
+                sys.exit()
                 # Add the bbox to the plot
                 ax.add_patch(bbox)
                 # Add label

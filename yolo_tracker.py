@@ -35,16 +35,18 @@ def TrackerInit(tracker_type):
 
     return tracker
 
-def YOLO(frame,tracker_type):
+def YOLO(frame,tracker_type,img_size):
     trackers=[]
     bboxes=[]
 
     input_img=Image.fromarray(frame)
 
-    trans=transforms.Compose([transforms.Resize((416,416)),
-                              transforms.ToTensor()])
+    trans=transforms.Compose([transforms.ToTensor()])
 
-    input_img=trans(input_img).unsqueeze(0).to(device)
+    input_img=trans(input_img).to(device)
+
+    input_img, _ = pad_to_square(input_img, 0)
+    input_img = resize(input_img, img_size).unsqueeze(0)
 
     # Detect Object
     detections = model(input_img)
@@ -82,7 +84,7 @@ if __name__=='__main__':
 
     device='cuda' if torch.cuda.is_available() else 'cpu'
 
-    tracker_type='CSRT'
+    tracker_type='MEDIANFLOW'
 
     # YOLO model initialize
     print('YOLO model initializing...')
@@ -114,10 +116,11 @@ if __name__=='__main__':
     count=0
 
     print(frame.shape)
+    
 
     while True:
         if count%30==0:
-            trackers,bboxes = YOLO(frame,tracker_type)
+            trackers,bboxes = YOLO(frame,tracker_type,opt.img_size)
 
         # Read a new frame
         ok, frame = video.read()
@@ -130,7 +133,6 @@ if __name__=='__main__':
         # Update tracker
         for i,t in enumerate(trackers):
             ok, bboxes[i] = t.update(frame)
-            break
  
         # Calculate Frames per second (FPS)
         fps = cv2.getTickFrequency() / (cv2.getTickCount() - timer);
@@ -142,7 +144,6 @@ if __name__=='__main__':
                 p1 = (int(b[0]), int(b[1]))
                 p2 = (int(b[2]), int(b[3]))
                 cv2.rectangle(frame, p1, p2, (255,0,0), 2, 1)
-                break
         else :
             # Tracking failure
             cv2.putText(frame, "Tracking failure detected", (100,80), cv2.FONT_HERSHEY_SIMPLEX, 0.75,(0,0,255),2)
