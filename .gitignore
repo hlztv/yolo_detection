@@ -1,5 +1,3 @@
-
-.DS_Store
 build
 .git
 *.egg-info
@@ -10,6 +8,6 @@ backup
 weights/*.weights
 __pycache__
 checkpoints
-.vscode/
 weights/d*
 weights/y*
+.vscode/
