@@ -44,10 +44,11 @@ def rescale_boxes(boxes, current_dim, original_shape):
     unpad_w = current_dim - pad_x
 
     # Rescale bounding boxes to dimension of original image
-    boxes[:, 0] = ((boxes[:, 0] - pad_x // 2) / unpad_w) * orig_w
-    boxes[:, 1] = ((boxes[:, 1] - pad_y // 2) / unpad_h) * orig_h
-    boxes[:, 2] = ((boxes[:, 2] - pad_x // 2) / unpad_w) * orig_w
-    boxes[:, 3] = ((boxes[:, 3] - pad_y // 2) / unpad_h) * orig_h
+    for box in boxes:
+        box[0] = ((box[0] - pad_x // 2) / unpad_w) * orig_w
+        box[1] = ((box[1] - pad_y // 2) / unpad_h) * orig_h
+        box[2] = ((box[2] - pad_x // 2) / unpad_w) * orig_w
+        box[3] = ((box[3] - pad_y // 2) / unpad_h) * orig_h
 
     return boxes
 
