@@ -104,7 +104,7 @@ if __name__=='__main__':
 
     classes=load_classes(opt.class_path)
 
-    video=cv2.VideoCapture('Chaplin.mp4')
+    video=cv2.VideoCapture('street.mp4')
 
     if not video.isOpened():
         print("Could not open video")

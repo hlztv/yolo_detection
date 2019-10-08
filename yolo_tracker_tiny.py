@@ -86,7 +86,7 @@ def pad_to_square_numpy(img, pad_value):
     return img
 
 def resize_numpy(img,img_size):
-    img=pad_to_square_numpy(img,0)
+    #img=pad_to_square_numpy(img,0)
     img=cv2.resize(img, dsize=(img_size,img_size),interpolation=cv2.INTER_NEAREST)
     
     return img
@@ -123,7 +123,7 @@ if __name__=='__main__':
 
     classes=load_classes(opt.class_path)
 
-    video=cv2.VideoCapture('Chaplin.mp4')
+    video=cv2.VideoCapture('Street.mp4')
 
     if not video.isOpened():
         print("Could not open video")
@@ -174,7 +174,7 @@ if __name__=='__main__':
             for b in bboxes:
                 p1 = (int(b[0]), int(b[1]))
                 p2 = (int(b[2]), int(b[3]))
-                cv2.rectangle(origin_frame, p1, p2, (255,0,0), 2, 1)
+                cv2.rectangle(origin_frame, p1, p2, (0,255,0), 2, 1)
         else :
             # Tracking failure
             cv2.putText(origin_frame, "Tracking failure detected", (100,80), cv2.FONT_HERSHEY_SIMPLEX, 0.75,(0,0,255),2)

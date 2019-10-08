@@ -26,7 +26,7 @@ if __name__ == '__main__' :
         tracker = cv2.TrackerCSRT_create()
 
     # Read video
-    video = cv2.VideoCapture("Chaplin.mp4")
+    video = cv2.VideoCapture("town.mp4")
  
     # Exit if video not opened.
     if not video.isOpened():
@@ -38,7 +38,7 @@ if __name__ == '__main__' :
     if not ok:
         print('Cannot read video file')
         sys.exit()
-     
+    
     # Define an initial bounding box
     bbox = (287, 23, 86, 320)
  
@@ -62,7 +62,7 @@ if __name__ == '__main__' :
  
         # Calculate Frames per second (FPS)
         fps = cv2.getTickFrequency() / (cv2.getTickCount() - timer);
- 
+
         # Draw bounding box
         if ok:
             # Tracking success
@@ -81,6 +81,9 @@ if __name__ == '__main__' :
  
         # Display result
         cv2.imshow("Tracking", frame)
+
+        if fps > 30:
+            cv2.waitKey(20)
  
         # Exit if ESC pressed
         k = cv2.waitKey(1) & 0xff
