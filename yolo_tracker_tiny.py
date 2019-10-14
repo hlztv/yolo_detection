@@ -94,10 +94,10 @@ def resize_numpy(img,img_size):
 if __name__=='__main__':
     parser=argparse.ArgumentParser()
 
-    parser.add_argument('--model_def',type=str,default='config/yolov3.cfg')
-    parser.add_argument('--weights_path',type=str,default='weights/yolov3.weights')
+    parser.add_argument('--model_def',type=str,default='config/yolov3-tiny.cfg')
+    parser.add_argument('--weights_path',type=str,default='weights/yolov3-tiny.weights')
     parser.add_argument('--class_path',type=str,default='data/coco.names')
-    parser.add_argument("--conf_thres", type=float, default=0.8)
+    parser.add_argument("--conf_thres", type=float, default=0.4)
     parser.add_argument("--nms_thres", type=float, default=0.4)
     parser.add_argument("--img_size", type=int, default=416)
     opt=parser.parse_args()
@@ -123,7 +123,7 @@ if __name__=='__main__':
 
     classes=load_classes(opt.class_path)
 
-    video=cv2.VideoCapture('Street.mp4')
+    video=cv2.VideoCapture('street.mp4')
 
     if not video.isOpened():
         print("Could not open video")
@@ -140,7 +140,7 @@ if __name__=='__main__':
     frame=resize_numpy(frame,opt.img_size)
 
     while True:
-        if count%30==0:
+        if count%60==0:
             trackers,bboxes = YOLO(frame,tracker_type,opt.img_size,device)
 
         # Read a new frame

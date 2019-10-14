@@ -37,18 +37,13 @@ def TrackerInit(tracker_type):
 
     return tracker
 
-def YOLO(frame,tracker_type,img_size,is_cuda):
-    trackers=[]
-    bboxes=[]
+def YOLO(frame,img_size,is_cuda):
 
     input_img=Image.fromarray(frame)
 
     trans=transforms.Compose([transforms.ToTensor()])
 
     input_img=trans(input_img).unsqueeze(0)
-
-    #input_img, _ = pad_to_square(input_img, 0)
-    #input_img = resize(input_img, img_size).unsqueeze(0)
 
     if is_cuda:
         input_img=input_img.to('cuda')
@@ -58,23 +53,15 @@ def YOLO(frame,tracker_type,img_size,is_cuda):
     detections = non_max_suppression(detections, opt.conf_thres, opt.nms_thres)[0]
     
     if detections is not None:
-        #detections=rescale_boxes(detections,opt.img_size,frame.shape[:2]).long()
-
         for det in detections:
             if det[-1] != 0:
                 continue
 
             p1=tuple(det[:2])
             p2=tuple(det[2:4])
-            tracker=TrackerInit(tracker_type)
 
             bbox=p1+p2
-            ok=tracker.init(frame,bbox)
-
-            trackers.append(tracker)
-            bboxes.append(bbox)
-
-    return trackers,bboxes
+            return bbox
 
 def pad_to_square_numpy(img, pad_value):
     c, h, w = img.shape
@@ -97,10 +84,10 @@ def resize_numpy(img,img_size):
 if __name__=='__main__':
     parser=argparse.ArgumentParser()
 
-    parser.add_argument('--model_def',type=str,default='config/yolov3.cfg')
-    parser.add_argument('--weights_path',type=str,default='weights/yolov3.weights')
+    parser.add_argument('--model_def',type=str,default='config/yolov3-tiny.cfg')
+    parser.add_argument('--weights_path',type=str,default='weights/yolov3-tiny.weights')
     parser.add_argument('--class_path',type=str,default='data/coco.names')
-    parser.add_argument("--conf_thres", type=float, default=0.5)
+    parser.add_argument("--conf_thres", type=float, default=0.4)
     parser.add_argument("--nms_thres", type=float, default=0.4)
     parser.add_argument("--img_size", type=int, default=416)
     opt=parser.parse_args()
@@ -125,8 +112,9 @@ if __name__=='__main__':
     model.eval()
 
     classes=load_classes(opt.class_path)
+    tracker = cv2.TrackerKCF_create()
 
-    video=cv2.VideoCapture('town.mp4')
+    video=cv2.VideoCapture('Chaplin.mp4')
 
     if not video.isOpened():
         print("Could not open video")
@@ -137,18 +125,24 @@ if __name__=='__main__':
     if not ok:
         print('Cannot read video file')
         sys.exit()
+    
+    frame=resize_numpy(frame,opt.img_size)
+
+    bbox=YOLO(frame,opt.img_size,device)
+
+    ok=tracker.init(frame,bbox)
 
     count=0
 
-    frame=resize_numpy(frame,opt.img_size)
-
     while True:
-        if count%30==0:
-            trackers,bboxes = YOLO(frame,tracker_type,opt.img_size,device)
+        if count%30 == 0 and count != 0:
+            bbox = YOLO(frame,opt.img_size,device)
+            print('detecting..')
+            print(bbox)
+            ok=tracker.init(frame,bbox)
 
         # Read a new frame
         ok, origin_frame = video.read()
-        cv2.imwrite('outputs/'+str(count)+'.png',origin_frame)
         if not ok:
             break
 
@@ -156,18 +150,14 @@ if __name__=='__main__':
          
         # Start timer
         timer = cv2.getTickCount()
- 
-        # Update tracker
-        for i,t in enumerate(trackers):
-            ok, bboxes[i] = t.update(frame)
-            bboxes[i]=list(bboxes[i])
 
-        for box in bboxes:
-            p1 = (int(box[0]), int(box[1]))
-            p2 = (int(box[2]), int(box[3]))
-            cv2.rectangle(frame, p1, p2, (255,0,0), 2, 1)
+        ok,bbox=tracker.update(origin_frame)
+
+        p1 = (int(bbox[0]), int(bbox[1]))
+        p2 = (int(bbox[2]), int(bbox[3]))
+        cv2.rectangle(frame, p1, p2, (255,0,0), 2, 1)
         
-        bboxes=rescale_boxes(bboxes,opt.img_size,origin_frame.shape[:2])
+        bbox=rescale_boxes([list(bbox)],opt.img_size,origin_frame.shape[:2])[0]
 
         # Calculate Frames per second (FPS)
         fps = cv2.getTickFrequency() / (cv2.getTickCount() - timer)
@@ -175,10 +165,9 @@ if __name__=='__main__':
         # Draw bounding box
         if ok:
             # Tracking success
-            for box in bboxes:
-                p1 = (int(box[0]), int(box[1]))
-                p2 = (int(box[2]), int(box[3]))
-                cv2.rectangle(origin_frame, p1, p2, (0,255,0), 2, 1)
+            p1 = (int(bbox[0]), int(bbox[1]))
+            p2 = (int(bbox[2]), int(bbox[3]))
+            cv2.rectangle(origin_frame, p1, p2, (0,255,0), 2, 1)
         else :
             # Tracking failure
             cv2.putText(origin_frame, "Tracking failure detected", (100,80), cv2.FONT_HERSHEY_SIMPLEX, 0.75,(0,0,255),2)
@@ -192,7 +181,6 @@ if __name__=='__main__':
         # Display result
         cv2.imshow("Tracking", origin_frame)
         cv2.imshow('mini',frame)
-        cv2.waitKey(20)
 
         # Exit if ESC pressed
         k = cv2.waitKey(1) & 0xff
