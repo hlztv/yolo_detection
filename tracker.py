@@ -26,7 +26,7 @@ if __name__ == '__main__' :
         tracker = cv2.TrackerCSRT_create()
 
     # Read video
-    video = cv2.VideoCapture("town.mp4")
+    video = cv2.VideoCapture("street.mp4")
  
     # Exit if video not opened.
     if not video.isOpened():

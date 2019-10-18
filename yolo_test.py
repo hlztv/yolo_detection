@@ -34,10 +34,12 @@ def YOLO(frame,img_size,is_cuda):
             if det[-1] != 0:
                 continue
 
-            p1=tuple(det[:2])
-            p2=tuple(det[2:4])
+            det=det.tolist()
 
-            bbox=p1+p2
+            det[2]-=det[0]
+            det[3]-=det[1]
+
+            bbox=tuple(det[:4])
             return bbox
 
 def pad_to_square_numpy(img, pad_value):
@@ -61,12 +63,14 @@ def resize_numpy(img,img_size):
 if __name__=='__main__':
     parser=argparse.ArgumentParser()
 
-    parser.add_argument('--model_def',type=str,default='config/yolov3-tiny.cfg')
-    parser.add_argument('--weights_path',type=str,default='weights/yolov3-tiny.weights')
-    parser.add_argument('--class_path',type=str,default='data/coco.names')
-    parser.add_argument("--conf_thres", type=float, default=0.4)
-    parser.add_argument("--nms_thres", type=float, default=0.4)
-    parser.add_argument("--img_size", type=int, default=416)
+    parser.add_argument("--model_def", type=str, default="config/yolov3-tiny.cfg", help="path to model definition file")
+    parser.add_argument("--weights_path", type=str, default="weights/yolov3-tiny.weights", help="path to weights file")
+    parser.add_argument("--class_path", type=str, default="data/coco.names", help="path to class label file")
+    parser.add_argument("--conf_thres", type=float, default=0.4, help="object confidence threshold")
+    parser.add_argument("--nms_thres", type=float, default=0.3, help="iou thresshold for non-maximum suppression")
+    parser.add_argument("--img_size", type=int, default=416, help="size of each image dimension")
+    parser.add_argument("--checkpoint_model", type=str, help="path to checkpoint model")
+
     opt=parser.parse_args()
 
     device=True if torch.cuda.is_available() else False
@@ -93,36 +97,30 @@ if __name__=='__main__':
 
     video=cv2.VideoCapture('Chaplin.mp4')
 
-    if not video.isOpened():
-        print("Could not open video")
-        sys.exit()
- 
     count=0
 
     while True:
         # Read a new frame
-        ok, origin_frame = video.read()
+        _,origin_frame = video.read()
+        mini_frame=resize_numpy(origin_frame,opt.img_size)
 
-        if not ok:
-            break
-
-        frame=resize_numpy(origin_frame,opt.img_size)
-
-        if count%30 == 0 :
-            bbox = YOLO(frame,opt.img_size,device)
-            ok=tracker.init(frame,bbox)
-            print(frame.shape,bbox)
+        if count%30 == 0:
+            bbox = YOLO(mini_frame,opt.img_size,device)  # YOLO Detect
+            tracker = cv2.TrackerKCF_create()
+            ok=tracker.init(mini_frame,bbox)
         else:
-            ok,bbox=tracker.update(frame)
+            ok,bbox=tracker.update(mini_frame)
 
         # Start timer
         timer = cv2.getTickCount()
 
-        p1 = (int(bbox[0]), int(bbox[1]))
-        p2 = (int(bbox[2]), int(bbox[3]))
-        cv2.rectangle(frame, p1, p2, (255,0,0), 2, 1)
+        (x,y,w,h)=[int(v) for v in bbox]
+
+        cv2.rectangle(mini_frame, (x,y), (x+w,y+h), (255,0,0), 2, 1)
+
+        (x,y,w,h)= rescale_boxes([[x,y,w,h]],opt.img_size,origin_frame.shape[:2])[0]
         
-        bbox=rescale_boxes([list(bbox)],opt.img_size,origin_frame.shape[:2])[0]
+        (x,y,w,h)=[int(v) for v in (x,y,w,h)]
 
         # Calculate Frames per second (FPS)
         fps = cv2.getTickFrequency() / (cv2.getTickCount() - timer)
@@ -130,9 +128,7 @@ if __name__=='__main__':
         # Draw bounding box
         if ok:
             # Tracking success
-            p1 = (int(bbox[0]), int(bbox[1]))
-            p2 = (int(bbox[2]), int(bbox[3]))
-            cv2.rectangle(origin_frame, p1, p2, (0,255,0), 2, 1)
+            cv2.rectangle(origin_frame, (x,y), (x+w,y+h), (0,255,0), 2, 1)
         else :
             # Tracking failure
             cv2.putText(origin_frame, "Tracking failure detected", (100,80), cv2.FONT_HERSHEY_SIMPLEX, 0.75,(0,0,255),2)
@@ -145,7 +141,10 @@ if __name__=='__main__':
 
         # Display result
         cv2.imshow("Tracking", origin_frame)
-        cv2.imshow('mini',frame)
+        cv2.imshow('mini',mini_frame)
+
+        if int(fps)>30:
+            cv2.waitKey(20)
 
         # Exit if ESC pressed
         k = cv2.waitKey(1) & 0xff
