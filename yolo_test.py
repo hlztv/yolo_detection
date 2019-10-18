@@ -14,29 +14,6 @@ import numpy as np
 
 import matplotlib.pyplot as plt
 
-def TrackerInit(tracker_type):
-
-    tracker=cv2.TrackerKCF_create()
-
-    if tracker_type == 'BOOSTING':
-        tracker = cv2.TrackerBoosting_create()
-    if tracker_type == 'MIL':
-        tracker = cv2.TrackerMIL_create()
-    if tracker_type == 'KCF':
-        tracker = cv2.TrackerKCF_create()
-    if tracker_type == 'TLD':
-        tracker = cv2.TrackerTLD_create()
-    if tracker_type == 'MEDIANFLOW':
-        tracker = cv2.TrackerMedianFlow_create()
-    if tracker_type == 'GOTURN':
-        tracker = cv2.TrackerGOTURN_create()
-    if tracker_type == 'MOSSE':
-        tracker = cv2.TrackerMOSSE_create()
-    if tracker_type == "CSRT":
-        tracker = cv2.TrackerCSRT_create()
-
-    return tracker
-
 def YOLO(frame,img_size,is_cuda):
 
     input_img=Image.fromarray(frame)
@@ -120,38 +97,26 @@ if __name__=='__main__':
         print("Could not open video")
         sys.exit()
  
-    # Read first frame.
-    ok, frame = video.read()
-    if not ok:
-        print('Cannot read video file')
-        sys.exit()
-    
-    frame=resize_numpy(frame,opt.img_size)
-
-    bbox=YOLO(frame,opt.img_size,device)
-
-    ok=tracker.init(frame,bbox)
-
     count=0
 
     while True:
-        if count%30 == 0 and count != 0:
-            bbox = YOLO(frame,opt.img_size,device)
-            print('detecting..')
-            print(bbox)
-            ok=tracker.init(frame,bbox)
-
         # Read a new frame
         ok, origin_frame = video.read()
+
         if not ok:
             break
 
         frame=resize_numpy(origin_frame,opt.img_size)
-         
+
+        if count%30 == 0 :
+            bbox = YOLO(frame,opt.img_size,device)
+            ok=tracker.init(frame,bbox)
+            print(frame.shape,bbox)
+        else:
+            ok,bbox=tracker.update(frame)
+
         # Start timer
         timer = cv2.getTickCount()
-
-        ok,bbox=tracker.update(origin_frame)
 
         p1 = (int(bbox[0]), int(bbox[1]))
         p2 = (int(bbox[2]), int(bbox[3]))

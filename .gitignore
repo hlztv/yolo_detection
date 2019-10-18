@@ -11,3 +11,4 @@ checkpoints
 weights/d*
 weights/y*
 .vscode/
+*.png

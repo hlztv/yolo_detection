@@ -1,1 +1,0 @@
-python yolo_tracker_tiny.py --weights_path weights/yolov3-tiny.weights --model_def config/yolov3-tiny.cfg
