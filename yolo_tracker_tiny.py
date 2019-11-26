@@ -51,7 +51,7 @@ def pad_to_square_numpy(img, pad_value):
     pad = (0, 0, pad1, pad2) if h <= w else (pad1, pad2, 0, 0)
     # Add padding
     img=cv2.copyMakeBorder(img,pad[0],pad[1],pad[2],pad[3],cv2.BORDER_CONSTANT,value=pad_value)
-    
+
     return img
 
 def resize_numpy(img,img_size):
@@ -66,7 +66,7 @@ if __name__=='__main__':
     parser.add_argument("--model_def", type=str, default="config/yolov3-tiny.cfg", help="path to model definition file")
     parser.add_argument("--weights_path", type=str, default="weights/yolov3-tiny.weights", help="path to weights file")
     parser.add_argument("--class_path", type=str, default="data/coco.names", help="path to class label file")
-    parser.add_argument("--conf_thres", type=float, default=0.3, help="object confidence threshold")
+    parser.add_argument("--conf_thres", type=float, default=0.5, help="object confidence threshold")
     parser.add_argument("--nms_thres", type=float, default=0.3, help="iou thresshold for non-maximum suppression")
     parser.add_argument("--img_size", type=int, default=416, help="size of each image dimension")
     parser.add_argument("--checkpoint_model", type=str, help="path to checkpoint model")
@@ -106,6 +106,7 @@ if __name__=='__main__':
         # Read a new frame
         _,origin_frame = video.read()
         origin_frame=cv2.flip(origin_frame,1)
+        
         mini_frame=resize_numpy(origin_frame,opt.img_size)
 
         if count%30 == 0 or not ok:
@@ -137,15 +138,13 @@ if __name__=='__main__':
         
             # Display FPS on frame
             #cv2.putText(origin_frame, "FPS : " + str(int(fps)), (100,50), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (50,170,50), 2)
-        #else :
+        else :
             # Tracking failure
-            #cv2.putText(origin_frame, "Tracking failure detected", (100,80), cv2.FONT_HERSHEY_SIMPLEX, 0.75,(0,0,255),2)
+            cv2.putText(origin_frame, "Tracking failure detected", (100,80), cv2.FONT_HERSHEY_SIMPLEX, 0.75,(0,0,255),2)
     
         # Display result
         cv2.imshow("Tracking", origin_frame)
         cv2.imshow('mini',mini_frame)
-
-        cv2.imwrite('output/'+str(count)+'.png',origin_frame)
 
         if int(fps)>30:
             cv2.waitKey(20)
