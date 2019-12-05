@@ -1,6 +1,11 @@
 ## YOLO Tracker
 
 
+### donwload weights
+```
+~/weights# bash download_weights.sh
+```
+
 ### install requirements
 ```
 # pip install -r requirements.txt
